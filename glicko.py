@@ -167,4 +167,6 @@ def calculate_odds(a,b):
     x = a - b
     win_percent = (2 * math.pow(10, -15)) * math.pow(x, 5) + (-2 * math.pow(10, -23)) * math.pow(x, 4) + (-2 * math.pow(10, -9)) * math.pow(x, 3) + (3 * math.pow(10, -17)) * math.pow(x, 2) + (0.0014 * x) + 0.5
     win_percent = win_percent * 100
-    return "P1's odds of victory are "+str(win_percent)+"%"
+    win_percent = str(win_percent)
+    win_percent = win_percent[:-12]
+    return win_percent

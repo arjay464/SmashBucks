@@ -29,7 +29,7 @@ async def send_message(message, user_message, is_private, is_update, is_bid):  #
 
 
 async def run_discord_bot():
-    TOKEN = 'MTIwMjM1OTQ1MTYwMDgxODIwNw.GW5H3W.ctIYPU1VCqkGaS_pB1oRNItFRmeL5Z_wcMJxzE'
+    TOKEN = 'MTIwMjM1OTQ1MTYwMDgxODIwNw.GWp1I6.vOSnpt7W6QkNkEfVuPv9Xd5j-Yx1yikUKwC1zk'
     intents = discord.Intents.default()
     intents.message_content = True
     intents.guild_scheduled_events = True

@@ -4,6 +4,7 @@ import re
 import random as r
 import asyncio
 import next
+import glicko
 
 
 def handleResponse(user_message, message, is_illegal):
@@ -422,4 +423,24 @@ def handleResponse(user_message, message, is_illegal):
         else:
             return "Permission Denied."
 
+    if re.search("%predict*", p_message):
+        p_message = p_message[9:]
+        cursor = main.cursor
+        idx = p_message.find(" ")
+        p1_tag = p_message[:idx]
+        p2_tag = p_message[idx+1:]
+        cursor.execute(f"SELECT r.glicko FROM startGG AS s INNER JOIN balance AS b ON b.ID = s.playerID INNER JOIN rankings AS r ON r.player_id = b.ID WHERE b.tag = '{p1_tag}'")
+        for x in cursor:
+            x = str(x)
+            p1_glicko = x[1:-2]
+            p1_glicko = int(p1_glicko)
 
+        cursor.execute(f"SELECT r.glicko FROM startGG AS s INNER JOIN balance AS b ON b.ID = s.playerID INNER JOIN rankings AS r ON r.player_id = b.ID WHERE b.tag = '{p2_tag}'")
+        for x in cursor:
+            x = str(x)
+            p2_glicko = x[1:-2]
+            p2_glicko = int(p2_glicko)
+
+        odds = glicko.calculate_odds(p1_glicko,p2_glicko)
+
+        return p1_tag+" has a "+odds+"% chance to beat "+p2_tag
