@@ -290,25 +290,36 @@ def handleResponse(user_message, message, is_illegal):
         cursor.execute("SELECT * FROM line_board WHERE is_active = 1")
         for x in cursor:
             x = str(x)
+            x = x[1:-1]
             lines.append(x)
         for z in lines:
-            z = z.replace(",", "")
-            z = z.replace("(", "")
-            z = z.replace(")", "")
-            z = z.replace("'","")
             print(z)
-            index = z.find(" ")
+            index = z.find(",")
             line_number = z[:index]
-            z = z[index+1:]
-            index = z.find(":")
+            z = z[index+2:]
+            index = z.find(",")
             line_text = z[:index]
-            z = z[index + 2:]
-            index = z.find(" ")
+            line_text = line_text[1:-1]
+            z = z[index+2:]
+            index = z.find(",")
             input_odds = z[:index]
-            z = z[index + 1:]
-            index = z.find(" ")
+            z = z[index+2:]
+            index = z.find(",")
             output_odds = z[:index]
-            z = line_number+". ["+output_odds+" : "+input_odds+"] "+line_text
+            if input_odds == "1.0":
+                output_odds = float(output_odds)
+                output_odds = round(output_odds, 2)
+                if output_odds == 1:
+                    output_odds = 1.01
+                z = line_number+". ["+str(output_odds)+": 1]  "+line_text
+            else:
+                input_odds = float(input_odds)
+                input_odds = 1 / input_odds
+                input_odds = 1 + input_odds
+                input_odds = round(input_odds, 2)
+                if input_odds == 1:
+                    input_odds = 1.01
+                z = line_number+". ["+str(input_odds)+": 1]  "+line_text
             cleaned.append(z)
         output = "\n".join(cleaned)
         if output == "":
@@ -442,5 +453,5 @@ def handleResponse(user_message, message, is_illegal):
             p2_glicko = int(p2_glicko)
 
         odds = glicko.calculate_odds(p1_glicko,p2_glicko)
-
-        return p1_tag+" has a "+odds+"% chance to beat "+p2_tag
+        odds = round(odds, 2)
+        return p1_tag+" has a "+str(odds)+"% chance to beat "+p2_tag

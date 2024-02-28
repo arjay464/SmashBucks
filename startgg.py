@@ -5,7 +5,6 @@ import main
 
 
 async def set_entrants(target):
-    print("set_entrants called")
     transport = AIOHTTPTransport(url='https://api.start.gg/gql/alpha',
                                  headers={"Authorization": "Bearer 78daf09295ea46605a37caf953448871"})
 
@@ -28,7 +27,6 @@ async def set_entrants(target):
     )
     target = str(target)
     target = target[7:-1]
-    print(target)
     params = {"setID": target}
     result = await client.execute_async(query, variable_values=params)
     print("result "+ str(result))

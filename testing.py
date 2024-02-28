@@ -1,8 +1,8 @@
 import glicko
 
-output = glicko.calculate_odds(1411, 1581)
-
-print(output)
+total_profit = 500
+margin = glicko.calculate_margin(total_profit)
+print(margin)
 
 
 
