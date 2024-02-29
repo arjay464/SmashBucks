@@ -1,8 +1,9 @@
 import glicko
+import main
 
-total_profit = 500
-margin = glicko.calculate_margin(total_profit)
-print(margin)
+smashbucks = main.smashbucks
+
+smashbucks.send("test")
 
 
 

@@ -64,13 +64,15 @@ async def locate_started(event_id):
     client = Client(transport=transport, fetch_schema_from_transport=True)
     query = gql(
         """
-       query($eventID: ID!, $page: Int!, $perPage: Int!){
+query($eventID: ID!, $page: Int!, $perPage: Int!){
   event(id: $eventID){
     sets(
       page: $page,
       perPage: $perPage,
       sortType: STANDARD
-  	){
+      filters:{
+        state: 2
+      }){
   	nodes{
       id
     }
@@ -119,3 +121,94 @@ query($tourneySlug: String!) {
     event_id = ids['tournament']['events'][0]['id']
     entrants = ids['tournament']['events'][0]['entrants']['nodes']
     return event_id, entrants
+
+
+async def chain_locate_finished(event_id):
+    cursor = main.cursor
+    sets = await locate_finished(event_id)
+    results = []
+    cursor.execute("SELECT startID FROM processed_sets_finished")
+    processed_sets = []
+    for j in cursor:
+        j = str(j)
+        j = j[2:-3]
+        processed_sets.append(j)
+    for i in range(len(sets)):
+        id = str(sets[i])
+        id = id[7:-1]
+        if id in processed_sets:
+            print("skipped set")
+        else:
+            out = await set_results(sets[i])
+            results.append(out)
+    return results
+
+
+async def locate_finished(event_id):
+    transport = AIOHTTPTransport(url='https://api.start.gg/gql/alpha',
+                                 headers={"Authorization": "Bearer 78daf09295ea46605a37caf953448871"})
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+    query = gql(
+        """
+query($eventID: ID!, $page: Int!, $perPage: Int!){
+  event(id: $eventID){
+    sets(
+      page: $page,
+      perPage: $perPage,
+      sortType: STANDARD
+      filters:{
+        state: 3
+      }){
+  	nodes{
+      id
+    }
+  }
+}
+}  
+        """
+    )
+    params = {"eventID": event_id, "page": 1, "perPage": 50}
+    result = await client.execute_async(query, variable_values=params)
+    sets = result['event']['sets']['nodes']
+    targets = []
+    count = 0
+    for _ in sets:
+        x = sets[count]
+        count += 1
+        targets.append(x)
+    print(targets)
+    return targets
+
+
+async def set_results(target):
+    transport = AIOHTTPTransport(url='https://api.start.gg/gql/alpha',
+                                 headers={"Authorization": "Bearer 78daf09295ea46605a37caf953448871"})
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+    query = gql(
+        """
+ query($setID: ID!){
+    set(id: $setID){
+        slots{
+        standing{
+          placement
+            entrant{
+            id
+            }
+        }
+        }
+    }
+    }
+        """
+    )
+    target = str(target)
+    target = target[7:-1]
+    params = {"setID": target}
+    result = await client.execute_async(query, variable_values=params)
+    print("result "+ str(result))
+    p1 = result['set']['slots'][0]['standing']['entrant']['id']
+    p2 = result['set']['slots'][1]['standing']['entrant']['id']
+    p1_result = result['set']['slots'][0]['standing']['placement']
+    p2_result = result['set']['slots'][1]['standing']['placement']
+    temp_list = [target, p1, p2, p1_result, p2_result]
+    print("temp_list "+str(temp_list))
+    return temp_list

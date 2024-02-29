@@ -306,18 +306,23 @@ def handleResponse(user_message, message, is_illegal):
             z = z[index+2:]
             index = z.find(",")
             output_odds = z[:index]
+            cursor.execute("SELECT total_profit FROM margin LIMIT 1")
+            for x in cursor:
+                x = str(x)
+                total_profit = float(x[1:-2])
+            margin = glicko.calculate_margin(total_profit)
             if input_odds == "1.0":
                 output_odds = float(output_odds)
+                output_odds = output_odds * (1 - margin)
                 output_odds = round(output_odds, 2)
-                if output_odds == 1:
+                if output_odds <= 1:
                     output_odds = 1.01
                 z = line_number+". ["+str(output_odds)+": 1]  "+line_text
             else:
                 input_odds = float(input_odds)
-                input_odds = 1 / input_odds
-                input_odds = 1 + input_odds
+                input_odds = input_odds * (1 - margin)
                 input_odds = round(input_odds, 2)
-                if input_odds == 1:
+                if input_odds <= 1:
                     input_odds = 1.01
                 z = line_number+". ["+str(input_odds)+": 1]  "+line_text
             cleaned.append(z)
