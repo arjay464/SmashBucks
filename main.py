@@ -19,7 +19,8 @@ db = mysql.connector.connect(  # initializes the connection to the mysql db
     host=host,
     user=user,
     passwd=password,
-    database=database
+    database=database,
+    connection_timeout=178956
 )
 
 intents = discord.Intents.default()

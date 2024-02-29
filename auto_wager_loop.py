@@ -1,7 +1,7 @@
 import glicko
 import main
 import startgg
-import asyncio
+import time
 
 
 async def start_loop(tourney_slug):
@@ -20,7 +20,6 @@ async def start_loop(tourney_slug):
     tourney_slug = tourney_slug.replace("in house", "In-House")
     tourney_slug = tourney_slug.replace("cornell", "Cornell")
     await smashbucks.send("Welcome to "+tourney_slug+"!\nYou will be able to place wagers on all of tonight's sets. Wagers will appear as the tournament continues. For all wagers, the minimum bet is 5 SmashBucks and the maximum bet is 100 SmashBucks. Any payouts that are less than 1 will become 1.\nHave fun!")
-    #while loop starts here
     await collect_finished_sets(event_id)
     await collect_started_sets(event_id)
 
@@ -75,20 +74,34 @@ async def collect_started_sets(event_id):
             x = str(x)
             p2_tag = x[2:-3]
             print(p2_tag)
+        cursor.execute("SELECT total_profit FROM margin LIMIT 1")
+        for x in cursor:
+            x = str(x)
+            total_profit = float(x[1:-2])
+        margin = glicko.calculate_margin(total_profit)
+        now = time.gmtime()
+        current_time = time.mktime(now)
+        minus_odds = minus_odds * (1 - margin)
+        minus_odds = round(minus_odds, 2)
+        if minus_odds <= 1:
+            minus_odds = 1.01
+        plus_odds = plus_odds * (1 - margin)
+        plus_odds = round(plus_odds, 2)
+        if plus_odds <= 1:
+            plus_odds = 1.01
         if p1_glicko > p2_glicko:
-            cursor.execute(f"INSERT INTO line_board(line_text, output_odds, input_odds, is_active, heroID, enemyID)VALUES ('{p1_tag} to beat {p2_tag}',1,{minus_odds},1,'{p1_id}','{p2_id}')")
-            cursor.execute(f"INSERT INTO line_board(line_text, output_odds, input_odds, is_active, heroID, enemyID)VALUES ('{p2_tag} to beat {p1_tag}',{plus_odds},1,1,'{p2_id}','{p1_id}')")
+            cursor.execute(f"INSERT INTO line_board(line_text, odds, heroID, enemyID, time_occured)VALUES ('{p1_tag} to beat {p2_tag}',{minus_odds},'{p1_id}','{p2_id}','{current_time}')")
+            cursor.execute(f"INSERT INTO line_board(line_text, odds, heroID, enemyID, time_occured)VALUES ('{p2_tag} to beat {p1_tag}',{plus_odds},'{p2_id}','{p1_id}','{current_time}')")
             db.commit()
 
         elif p2_glicko > p1_glicko:
-            cursor.execute(f"INSERT INTO line_board(line_text, output_odds, input_odds, is_active, heroID, enemyID)VALUES ('{p2_tag} to beat {p1_tag}',1,{minus_odds},1,'{p2_id}','{p1_id}')")
-            cursor.execute(f"INSERT INTO line_board(line_text, output_odds, input_odds, is_active, heroID, enemyID)VALUES ('{p1_tag} to beat {p2_tag}',{plus_odds},1,1,'{p1_id}','{p2_id}')")
+            cursor.execute(f"INSERT INTO line_board(line_text, odds, heroID, enemyID, time_occured)VALUES ('{p2_tag} to beat {p1_tag}',{minus_odds},'{p2_id}','{p1_id}','{current_time}')")
+            cursor.execute(f"INSERT INTO line_board(line_text, odds, heroID, enemyID, time_occured)VALUES ('{p1_tag} to beat {p2_tag}',{plus_odds},'{p1_id}','{p2_id}','{current_time}')")
             db.commit()
 
         print(f'Set: {i[0]},{i[1]},{i[2]}')
         cursor.execute(f"INSERT INTO processed_sets_started(startID, p1ID, p2ID) VALUES('{i[0]}','{i[1]}','{i[2]}')")
         db.commit()
-         #smashbucks.send("A new line was added! Use %lines to see all available lines.")
         await smashbucks.send("New lines have been added! Check %lines to view them.")
     print("finished")
 
@@ -98,12 +111,12 @@ async def collect_finished_sets(event_id):
     cursor = main.cursor
     smashbucks = main.smashbucks
     sets = await startgg.chain_locate_finished(event_id)
-    # set[i] format: [startID, p1ID, p2ID, p1result, p2result]
+    # sets[i] format: [startID, p1ID, p2ID, p1result, p2result]
     cursor.execute(f"SELECT startID from processed_sets_started")
     active_lines = []
     for x in cursor:
         x = str(x)
-        x = x[2:-3]
+        x = x[2:-2]
         active_lines.append(x)
     for i in sets:
         if i[0] in active_lines:
@@ -114,13 +127,30 @@ async def collect_finished_sets(event_id):
             else:
                 print("something went wrong. No one won the set?")
                 winning_id = 0
-            cursor.execute(f"SELECT l.heroID from line_board as l INNER JOIN processed_sets_started as p ON p.line_id = l.line_id WHERE p.startID = '{i[0]}' ")
+            winning_id = int(winning_id)
+            cursor.execute(f"SELECT l.heroID, l.line_id from line_board as l INNER JOIN processed_sets_started as p ON p.line_id = l.line_id WHERE p.startID = '{i[0]}' ")
             for x in cursor:
                 x = str(x)
-                hero_id = x[1:-2]
+                x = x[1:-1]
+                idx = x.find(",")
+                hero_id = int(x[:idx])
+                line_id = int(x[idx+2:])
             if hero_id == winning_id:
-                pass
-                #the line wins
+                cursor.execute(f"SELECT player_id, wager_value, odds FROM casino WHERE line_id = {line_id}")
+                for x in cursor:
+                    x = str(x)
+                    x = x[1:-1]
+                    idx = x.find(",")
+                    player_id = x[:idx]
+                    x = x[idx+2:]
+                    idx = x.find(",")
+                    value = x[:idx]
+                    odds = x[idx+2:]
+                player_id = int(player_id)
+                value = int(value)
+                odds = float(odds)
+                # i ran out of time for now damn how was 12 hrs not enough time
+
             else:
                 pass
                 #the line loses

@@ -262,38 +262,18 @@ def handleResponse(user_message, message, is_illegal):
             print(event_loop)
             return"testing..."
 
-    if re.search('%add line*',p_message):
-        if message.author.name == 'arjay_tg' or message.author.name == '_camden':
-            x = p_message.replace("%add line ", "")
-            index = x.find(":")
-            text = x[:index+1]
-            x = x[index+2:]
-            index = x.find(" ")
-            payout = x[:index]
-            x = x[index+1:]
-            index = x.find(" ")
-            payin = x[:index]
-            x = x[index + 1:]
-            is_active = x
-            db = main.db
-            cursor = main.cursor
-            cursor.execute(f"INSERT INTO line_board(line_text, output_odds, input_odds, is_active) VALUES ('{text}',{payout},{payin},{is_active})")
-            db.commit()
-            return "Line added."
-        else:
-            return "Not a real line I'm afraid"
-
     if p_message == "%lines":
         cursor = main.cursor
         lines = []
         cleaned = []
-        cursor.execute("SELECT * FROM line_board WHERE is_active = 1")
+        now = time.gmtime()
+        current_time = time.mktime(now)
+        cursor.execute(f"SELECT * FROM line_board WHERE time_occured > {current_time} - 300")
         for x in cursor:
             x = str(x)
             x = x[1:-1]
             lines.append(x)
         for z in lines:
-            print(z)
             index = z.find(",")
             line_number = z[:index]
             z = z[index+2:]
@@ -302,29 +282,8 @@ def handleResponse(user_message, message, is_illegal):
             line_text = line_text[1:-1]
             z = z[index+2:]
             index = z.find(",")
-            input_odds = z[:index]
-            z = z[index+2:]
-            index = z.find(",")
-            output_odds = z[:index]
-            cursor.execute("SELECT total_profit FROM margin LIMIT 1")
-            for x in cursor:
-                x = str(x)
-                total_profit = float(x[1:-2])
-            margin = glicko.calculate_margin(total_profit)
-            if input_odds == "1.0":
-                output_odds = float(output_odds)
-                output_odds = output_odds * (1 - margin)
-                output_odds = round(output_odds, 2)
-                if output_odds <= 1:
-                    output_odds = 1.01
-                z = line_number+". ["+str(output_odds)+": 1]  "+line_text
-            else:
-                input_odds = float(input_odds)
-                input_odds = input_odds * (1 - margin)
-                input_odds = round(input_odds, 2)
-                if input_odds <= 1:
-                    input_odds = 1.01
-                z = line_number+". ["+str(input_odds)+": 1]  "+line_text
+            odds = z[:index]
+            z = line_number+". ["+odds+": 1] "+line_text
             cleaned.append(z)
         output = "\n".join(cleaned)
         if output == "":
@@ -341,30 +300,54 @@ def handleResponse(user_message, message, is_illegal):
             index = p_message.find(" ")
             line_number = p_message[:index]
             amount = p_message[index+1:]
-            cursor.execute("SELECT balance FROM balance WHERE username = %s",[str(message.author)])
+            amount = int(amount)
+            cursor.execute("SELECT balance, tag FROM balance WHERE username = %s",[str(message.author)])
             for x in cursor:
                 x = str(x)
-            x = x.replace("(","")
-            x = x.replace(",","")
-            x = x.replace(")","")
-            x = int(x)
-            amount = int(amount)
-            if amount > x or amount <= 0:
+            x = x[1:-2]
+            x = x.replace("'", "")
+            idx = x.find(",")
+            balance = x[:idx]
+            balance = int(balance)
+            print(x)
+            tag = x[idx+2:]
+            cursor.execute(f"SELECT time_occured FROM line_board WHERE line_id = {line_number}")
+            for x in cursor:
+                x = str(x)
+            opening_time = x[2:-5]
+            opening_time = int(opening_time)
+            now = time.gmtime()
+            current_time = time.mktime(now)
+            if opening_time < current_time - 300:
+                    return "Line is not being offered at this time. Lines are only offered for 5 minutes after they are posted or until they are closed by an admin."
+            cursor.execute(f"SELECT line_text, odds FROM line_board WHERE line_id = {line_number}")
+            # ('line text', 4.98)
+            for x in cursor:
+                x = str(x)
+                x = x[1:-1]
+                idx = x.find(',')
+                line_text = x[:idx]
+                odds = float(x[idx+2:])
+            print(odds)
+            if re.search(r"\b(?=\w)" + re.escape(tag) + r"\b(?!w)", line_text):
+                penalized_balance = balance - 5
+                cursor.execute(f"UPDATE balance SET balance = {penalized_balance} WHERE tag = '{tag}'")
+                return "COLLUSION! MATCH FIXING?! IN MY HOUSE?!\nI WILL NOT STAND FOR IT. THIS WILL NOT GO UN-PENALIZED.\nBalance: "+str(balance)+" -> "+str(penalized_balance)
+            if amount > balance or amount <= 0:
                 return "You're either mistaken or genuinely a moron. Either way, invalid wager."
             else:
-                new_balance = x - amount
+                new_balance = balance - amount
                 cursor.execute("SELECT ID FROM balance WHERE username = %s",[str(message.author)])
                 for y in cursor:
                     y = str(y)
                 y = y.replace("(","")
                 y = y.replace(",","")
                 y = y.replace(")","")
-                print(f"INSERT INTO casino(line_id, player_id, wager_value) VALUES({line_number},{y},{str(amount)})")
-                cursor.execute(f"INSERT INTO casino(line_id, player_id, wager_value) VALUES({line_number},{y},{str(amount)})")
+                cursor.execute(f"INSERT INTO casino(line_id, player_id, wager_value, odds) VALUES({line_number},{y},{str(amount)},{odds})")
                 db.commit()
                 cursor.execute("UPDATE balance SET balance = %s WHERE username = %s",(str(new_balance), (str(message.author))))
                 db.commit()
-                return str(amount)+" added on Line #"+line_number+"\nBalance: "+str(x)+" -> "+str(new_balance)
+                return str(amount)+" added on Line #"+line_number+"\nBalance: "+str(balance)+" -> "+str(new_balance)
 
     if re.search("%resolve*",p_message):
         pass
@@ -393,7 +376,7 @@ def handleResponse(user_message, message, is_illegal):
             return "Command failed to execute. Outside of bot channel."
         else:
             if message.author.name == "arjay_tg" or message.author.name == "_camden":
-                return "`%give [target] [amount]: Awards SmashBucks\n%revoke [target] [amount]: Revokes SmashBucks\n%add line [line text ending with a colon] [risk amount] [payout amount] [1 = active, 0 = inactive]: Adds betting lines.\n%resolve [line_number] [1 = win, 0 = lose]: Submit line results.`"
+                return "`%give [target] [amount]: Awards SmashBucks\n%revoke [target] [amount]: Revokes SmashBucks.\n%resolve [line_number] [1 = win, 0 = lose]: Submit line results.`"
             else:
                     "The command is named 'admin'. You are not an admin."
     if p_message == "%goals":
@@ -460,3 +443,49 @@ def handleResponse(user_message, message, is_illegal):
         odds = glicko.calculate_odds(p1_glicko,p2_glicko)
         odds = round(odds, 2)
         return p1_tag+" has a "+str(odds)+"% chance to beat "+p2_tag
+    if p_message == "%my_lines":
+        cursor = main.cursor
+        db = main.db
+        cursor.execute(f"SELECT ID FROM balance WHERE username = '{message.author}'")
+        for x in cursor:
+            x = str(x)
+        player_id = int(x[1:-2])
+        cursor.execute(f"SELECT line_id, wager_value FROM casino WHERE player_id = {player_id}")
+        line_ids = []
+        for x in cursor:
+            x = str(x)
+            x = x[1:-1]
+            idx = x.find(",")
+            line_id = int(x[:idx])
+            value = int(x[idx+2:])
+            line_ids.append((line_id, value))
+        lines = []
+        cleaned = []
+        for i in line_ids:
+            cursor.execute(f"SELECT * FROM line_board WHERE line_id = {i[0]}")
+            for x in cursor:
+                x = str(x)
+                x = x[1:-1]
+                lines.append((x, i[1]))
+        for z in lines:
+            index = z[0].find(",")
+            line_number = z[0][:index]
+            txt = z[0][index + 2:]
+            index = txt.find(",")
+            line_text = txt[:index]
+            line_text = line_text[1:-1]
+            txt = txt[index + 2:]
+            index = txt.find(",")
+            odds = txt[:index]
+            txt = line_number + ". [" + odds + ": 1] " + line_text+". Wager: "+str(z[1])
+            cleaned.append(txt)
+        output = "\n".join(cleaned)
+        if output == "":
+            return "You have no current wagers."
+        else:
+            return output
+
+
+
+
+
