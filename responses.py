@@ -14,8 +14,8 @@ def handleResponse(user_message, message, is_illegal):
             return "Command failed to execute. Outside of bot channel."
         else:
             print("begging in progress")
-            db = main.db
-            cursor = main.cursor
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             cursor.execute("SELECT ID FROM balance WHERE username = %s", [str(message.author)])
             for x in cursor:
                 x = str(x)
@@ -76,8 +76,8 @@ def handleResponse(user_message, message, is_illegal):
                 return "Too soon, man. Too soon"
 
     if re.search('%bribe*',p_message):
-        db = main.db
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         bribe = p_message
         bribe = bribe.replace("%bribe ","")
         cursor.execute("SELECT ID, balance FROM balance WHERE username = %s", [str(message.author)])
@@ -106,7 +106,8 @@ def handleResponse(user_message, message, is_illegal):
         return "`%beg: Beg for SmashBucks\n%balance: Check your balance\n%leaderboard: Check the leaderboard\n%bribe [amount]: Makes the bot more generous. Free money glitch?\n%welfare: Collect daily welfare (if eligible).\n%lines: Check the active betting lines. (soon)\n%wager [line number] [amount]: Wager on current betting lines.(soon)\n%preach: Listen to the holy word of Smashbucks`"
 
     if p_message == '%balance':
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         cursor.execute("SELECT balance FROM balance WHERE username = %s ", [str(message.author)])
 
         for x in cursor:
@@ -114,7 +115,8 @@ def handleResponse(user_message, message, is_illegal):
         return "You have "+x[1:-2]+" SmashBucks!"
 
     if p_message == '%leaderboard':
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         cursor.execute("SELECT tag, balance FROM balance ORDER BY balance DESC;")
         leaderboard = []
         for x in cursor:
@@ -138,8 +140,8 @@ def handleResponse(user_message, message, is_illegal):
             amount = amount.replace(" ","")
             tag = str(tag)
 
-            db = main.db
-            cursor = main.cursor
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             cursor.execute("SELECT balance FROM balance WHERE tag = %s;",[tag])
 
             for x in cursor:
@@ -179,8 +181,8 @@ def handleResponse(user_message, message, is_illegal):
             amount = amount.replace(" ","")
             tag = str(tag)
 
-            db = main.db
-            cursor = main.cursor
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             cursor.execute("SELECT balance FROM balance WHERE tag = %s;",[tag])
 
             for x in cursor:
@@ -214,8 +216,8 @@ def handleResponse(user_message, message, is_illegal):
         if is_illegal:
             return "Command failed to execute. Outside of bot channel."
         else:
-            db = main.db
-            cursor = main.cursor
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             now = time.gmtime()
             current_time = time.mktime(now)
             cursor.execute("SELECT ID, balance FROM balance WHERE username = %s", [str(message.author)])
@@ -263,7 +265,8 @@ def handleResponse(user_message, message, is_illegal):
             return"testing..."
 
     if p_message == "%lines":
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         lines = []
         cleaned = []
         now = time.gmtime()
@@ -294,8 +297,8 @@ def handleResponse(user_message, message, is_illegal):
         if is_illegal:
             return "Command failed to execute. Outside of bot channel."
         else:
-            db = main.db
-            cursor = main.cursor
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             p_message = p_message.replace("%wager ","")
             index = p_message.find(" ")
             line_number = p_message[:index]
@@ -354,7 +357,8 @@ def handleResponse(user_message, message, is_illegal):
     if re.search("%pay*",p_message):
         pass
     if p_message == "%glicko":
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         cursor.execute("SELECT b.tag, r.glicko FROM rankings AS r INNER JOIN balance AS b ON r.p_id = b.ID ORDER BY glicko DESC")
         rankings = []
         for x in cursor:
@@ -380,7 +384,8 @@ def handleResponse(user_message, message, is_illegal):
             else:
                     "The command is named 'admin'. You are not an admin."
     if p_message == "%goals":
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         cursor.execute(
             "SELECT goal_desc, payout FROM goals ORDER BY payout")
         goals = []
@@ -409,8 +414,8 @@ def handleResponse(user_message, message, is_illegal):
             idx = p_message.find(" ")
             tag = p_message[:idx]
             new_username = p_message[idx+1:]
-            cursor = main.cursor
-            db = main.db
+            db = main.init_database()
+            cursor = main.init_cursor(db)
             cursor.execute(f"SELECT ID FROM balance WHERE tag = '{tag}'")
             for x in cursor:
                 x = str(x)
@@ -424,7 +429,8 @@ def handleResponse(user_message, message, is_illegal):
 
     if re.search("%predict*", p_message):
         p_message = p_message[9:]
-        cursor = main.cursor
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         idx = p_message.find(" ")
         p1_tag = p_message[:idx]
         p2_tag = p_message[idx+1:]
@@ -444,8 +450,8 @@ def handleResponse(user_message, message, is_illegal):
         odds = round(odds, 2)
         return p1_tag+" has a "+str(odds)+"% chance to beat "+p2_tag
     if p_message == "%my_lines":
-        cursor = main.cursor
-        db = main.db
+        db = main.init_database()
+        cursor = main.init_cursor(db)
         cursor.execute(f"SELECT ID FROM balance WHERE username = '{message.author}'")
         for x in cursor:
             x = str(x)

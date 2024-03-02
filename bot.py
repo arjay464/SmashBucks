@@ -40,6 +40,10 @@ async def run_discord_bot():
     async def on_message(message):
         if message.author == client.user:  # don't respond to messages sent by the bot itself.
             return
+
+
+
+
         username = str(message.author)
         user_message = str(message.content)
         if user_message[0] == '*':  # the special character used to indicate a private command

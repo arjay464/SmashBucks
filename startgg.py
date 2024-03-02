@@ -71,7 +71,7 @@ query($eventID: ID!, $page: Int!, $perPage: Int!){
       perPage: $perPage,
       sortType: STANDARD
       filters:{
-        state: 3
+        state: 3 
       }){
   	nodes{
       id

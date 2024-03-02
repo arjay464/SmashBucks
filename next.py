@@ -2,8 +2,8 @@ import main
 
 
 def next_verse():
-    cursor = main.cursor
-    db = main.db
+    db = main.init_database()
+    cursor = main.init_cursor(db)
     verses = []
     cursor.execute("SELECT verse_text FROM bag WHERE picked = 0 LIMIT 1")
     for x in cursor: 
