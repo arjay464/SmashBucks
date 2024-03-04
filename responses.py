@@ -333,7 +333,6 @@ def handleResponse(user_message, message, is_illegal):
             if opening_time < current_time - 300:
                     return "Line is not being offered at this time. Lines are only offered for 5 minutes after they are posted or until they are closed by an admin."
             cursor.execute(f"SELECT line_text, odds FROM line_board WHERE line_id = {line_number}")
-            # ('line text', 4.98)
             for z in cursor:
                 z = str(x)
                 z = z[1:-1]
@@ -361,10 +360,44 @@ def handleResponse(user_message, message, is_illegal):
                 db.commit()
                 return str(amount)+" added on Line #"+line_number+"\nBalance: "+str(balance)+" -> "+str(new_balance)
 
-    if re.search("%resolve*",p_message):
-        pass
-    if re.search("%pay*",p_message):
-        pass
+    if re.search("%pay*", p_message):
+        if is_illegal:
+            return "Command failed to execute. Outside of bot channel."
+        else:
+            db = main.init_database()
+            cursor = main.init_cursor(db)
+            p_message = p_message.replace("%pay ", "")
+            print(p_message)
+            idx = p_message.find(" ")
+            target = p_message[:idx]
+            amount = int(p_message[idx+1:])
+            cursor.execute(f"SELECT balance FROM balance WHERE username = '{message.author}'")
+            for x in cursor:
+                x = str(x)
+                author_balance = int(x[1:-2])
+            if author_balance < amount:
+                return "You can't give more SmashBucks than you have."
+            cursor.execute(f"SELECT balance FROM balance WHERE tag = '{target}'")
+            for y in cursor:
+                y = str(y)
+                target_balance = int(y[1:-2])
+            try:
+                new_target_balance = target_balance + amount
+                new_author_balance = author_balance - amount
+            except:
+                return "Invalid recipient."
+            cursor.execute(f"SELECT tag FROM balance WHERE username = '{message.author}'")
+            for z in cursor:
+                z = str(z)
+                author_tag = z[2:-3]
+            print(author_tag, target)
+            if author_tag == target:
+                return "You cannot pay yourself. That doesn't make any sense."
+            cursor.execute(f"UPDATE balance SET balance = {new_target_balance} WHERE tag = '{target}'")
+            cursor.execute(f"UPDATE balance SET balance = {new_author_balance} WHERE username = '{message.author}'")
+            db.commit()
+            return "Gave "+str(amount)+" SmashBucks to "+target
+
     if p_message == "%glicko":
         db = main.init_database()
         cursor = main.init_cursor(db)
@@ -539,6 +572,9 @@ def handleResponse(user_message, message, is_illegal):
         if not output:
             output = "There aren't any bids yet. Be the first with %bid."
         return output
+
+    if p_message == "%start_auction":
+        return "It is now the final week of block 6 and, in celebration, we will be auctioning off the final practice of the block to the highest bidder. Use %bid [amount] to place a bid, and %auction to check everyone's highest bid. Only your highest bid will be considered. The auction ends at midnight. Good luck."
 
 
 
