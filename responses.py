@@ -304,6 +304,10 @@ def handleResponse(user_message, message, is_illegal):
             line_number = p_message[:index]
             amount = p_message[index+1:]
             amount = int(amount)
+            print("Amount = "+ str(amount))
+            print("Line number = "+line_number)
+            if not amount or not line_number:
+                return "You must specify an amount and a line number. For example: '%wager 1 10' places 10 SmashBucks on line 1."
             cursor.execute("SELECT balance, tag FROM balance WHERE username = %s",[str(message.author)])
             for x in cursor:
                 x = str(x)
@@ -312,12 +316,17 @@ def handleResponse(user_message, message, is_illegal):
             idx = x.find(",")
             balance = x[:idx]
             balance = int(balance)
-            print(x)
             tag = x[idx+2:]
             cursor.execute(f"SELECT time_occured FROM line_board WHERE line_id = {line_number}")
-            for x in cursor:
-                x = str(x)
-            opening_time = x[2:-5]
+            for y in cursor:
+                y = str(y)
+            try:
+                print(y)
+            except:
+                return("Line number does not exist. Remember to specify line number first, then wager amount.")
+            print(y)
+            opening_time = y[2:-5]
+            print(opening_time)
             opening_time = int(opening_time)
             now = time.gmtime()
             current_time = time.mktime(now)
@@ -325,12 +334,12 @@ def handleResponse(user_message, message, is_illegal):
                     return "Line is not being offered at this time. Lines are only offered for 5 minutes after they are posted or until they are closed by an admin."
             cursor.execute(f"SELECT line_text, odds FROM line_board WHERE line_id = {line_number}")
             # ('line text', 4.98)
-            for x in cursor:
-                x = str(x)
-                x = x[1:-1]
-                idx = x.find(',')
-                line_text = x[:idx]
-                odds = float(x[idx+2:])
+            for z in cursor:
+                z = str(x)
+                z = z[1:-1]
+                idx = z.find(',')
+                line_text = z[:idx]
+                odds = float(z[idx+2:])
             print(odds)
             if re.search(r"\b(?=\w)" + re.escape(tag) + r"\b(?!w)", line_text):
                 penalized_balance = balance - 5
@@ -449,6 +458,7 @@ def handleResponse(user_message, message, is_illegal):
         odds = glicko.calculate_odds(p1_glicko,p2_glicko)
         odds = round(odds, 2)
         return p1_tag+" has a "+str(odds)+"% chance to beat "+p2_tag
+
     if p_message == "%my_lines":
         db = main.init_database()
         cursor = main.init_cursor(db)
@@ -490,6 +500,49 @@ def handleResponse(user_message, message, is_illegal):
             return "You have no current wagers."
         else:
             return output
+
+    if re.search("%bid*", p_message):
+        bid = int(p_message.replace("%bid ",""))
+        print(bid)
+        db = main.init_database()
+        cursor = main.init_cursor(db)
+        cursor.execute(f"SELECT balance, ID FROM balance WHERE username = '{message.author}'")
+        for x in cursor:
+            x = str(x)
+            x = x[1:-1]
+            idx = x.find(",")
+            current_balance = int(x[:idx])
+            player_id = int(x[idx+2:])
+        if current_balance < bid:
+            return "You cannot bid more SmashBucks than you have."
+        elif current_balance < 1:
+            return "You must bid at least 1 SmashBuck."
+        else:
+            cursor.execute(f"INSERT INTO bid(player_id, bid_value) VALUES ({player_id},{bid})")
+            db.commit()
+            return "You've bid "+str(bid)+" SmashBucks."
+
+    if p_message == "%auction":
+        db = main.init_database()
+        cursor = main.init_cursor(db)
+        cursor.execute("SELECT DISTINCT b.tag, MAX(i.bid_value) FROM balance AS b INNER JOIN bid as i ON i.player_id = b.ID GROUP BY b.tag")
+        cleaned = []
+        for x in cursor:
+            x = str(x)
+            x = x[1:-1]
+            x = x.replace("'","")
+            idx = x.find(",")
+            tag = x[:idx]
+            bid = x[idx+2:]
+            cleaned.append(tag+" bid "+bid)
+        output = "\n".join(cleaned)
+        if not output:
+            output = "There aren't any bids yet. Be the first with %bid."
+        return output
+
+
+
+
 
 
 
