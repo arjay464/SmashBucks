@@ -7,7 +7,7 @@ import next
 import glicko
 
 
-def handleResponse(user_message, message, is_illegal):
+async def handleResponse(user_message, message, is_illegal):
     p_message = user_message
     if p_message == '%beg':
         if is_illegal:
@@ -417,6 +417,7 @@ def handleResponse(user_message, message, is_illegal):
 
     if p_message == "%troll":
         return "What is life? Am I alive? Are my thoughts real?"
+
     if p_message == "%admin":
         if is_illegal:
             return "Command failed to execute. Outside of bot channel."
@@ -558,7 +559,7 @@ def handleResponse(user_message, message, is_illegal):
     if p_message == "%auction":
         db = main.init_database()
         cursor = main.init_cursor(db)
-        cursor.execute("SELECT DISTINCT b.tag, MAX(i.bid_value) FROM balance AS b INNER JOIN bid as i ON i.player_id = b.ID GROUP BY b.tag")
+        cursor.execute("SELECT DISTINCT b.tag, MAX(i.bid_value) FROM balance AS b INNER JOIN bid as i ON i.player_id = b.ID GROUP BY b.tag ORDER BY MAX(i.bid_value) DESC ")
         cleaned = []
         for x in cursor:
             x = str(x)
@@ -576,11 +577,35 @@ def handleResponse(user_message, message, is_illegal):
     if p_message == "%start_auction":
         return "It is now the final week of block 6 and, in celebration, we will be auctioning off the final practice of the block to the highest bidder. Use %bid [amount] to place a bid, and %auction to check everyone's highest bid. Only your highest bid will be considered. The auction ends at midnight. Good luck."
 
-
-
-
-
-
-
-
-
+    if p_message == "%end_auction":
+        db = main.init_database()
+        cursor = main.init_cursor(db)
+        smashbucks = main.smashbucks
+        await smashbucks.send("The auction has ended. Now tabulating results...\n\n")
+        is_selected = True
+        while is_selected:
+            cursor.execute(f"SELECT DISTINCT b.tag, MAX(i.bid_value) FROM balance AS b INNER JOIN bid as i ON i.player_id = b.ID GROUP BY b.tag ORDER BY MAX(i.bid_value) DESC LIMIT 1")
+            for x in cursor:
+                x = str(x)
+            x = x[1:-1]
+            x = x.replace("'","")
+            idx = x.find(",")
+            tag = x[:idx]
+            amount = int(x[idx+2:])
+            cursor.execute(f"SELECT balance FROM balance WHERE tag = '{tag}'")
+            for y in cursor:
+                y = str(y)
+            current_balance = int(y[1:-2])
+            if amount > current_balance:
+                await smashbucks.send(tag+" no longer has the funds to fulfill their bid of "+str(amount)+". Therefore that bid will be disqualified.\n")
+                cursor.execute(f"SELECT ID from BALANCE WHERE tag = '{tag}'")
+                for z in cursor:
+                    z = str(z)
+                ID = z[1:-2]
+                cursor.execute(f"DELETE FROM bid ROWS WHERE player_id = {ID} AND bid_value = {amount}")
+            else:
+                await smashbucks.send(tag+" has the highest bid of "+str(amount)+". They win the auction.")
+                new_balance = current_balance - amount
+                cursor.execute(f"UPDATE balance SET balance = {new_balance} WHERE ID = {ID}")
+                is_selected = False
+        return "\nBalance: "+str(current_balance)+" -> "+str(new_balance)

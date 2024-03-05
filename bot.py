@@ -9,9 +9,9 @@ async def send_message(message, user_message, is_private, is_update, is_bid):  #
     try:
         if (not message.author.name == "_camden") and (not message.author.name == "arjay_tg") and (not message.channel.id == 1203022860340166758) and (not is_bid):
             # decides if the both should be executing a given command
-            response = responses.handleResponse(user_message, message, is_illegal=True)
+            response = await responses.handleResponse(user_message, message, is_illegal=True)
         else:
-            response = responses.handleResponse(user_message, message, is_illegal=False)
+            response = await responses.handleResponse(user_message, message, is_illegal=False)
         if message.author.name == "_camden" or message.author.name == "arjay_tg":  # gives admins the ability to use private and update commands
             if is_private:
                 await message.author.send(response)
