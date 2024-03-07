@@ -512,7 +512,7 @@ async def handleResponse(user_message, message, is_illegal):
         lines = []
         cleaned = []
         for i in line_ids:
-            cursor.execute(f"SELECT * FROM line_board WHERE line_id = {i[0]}")
+            cursor.execute(f"SELECT line_id, line_text, odds FROM line_board WHERE line_id = {i[0]}")
             for x in cursor:
                 x = str(x)
                 x = x[1:-1]

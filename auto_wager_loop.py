@@ -21,7 +21,7 @@ async def start_loop(tourney_slug):
     tourney_slug = tourney_slug.replace("cornell", "Cornell")
     #await smashbucks.send("Welcome to "+tourney_slug+"!\nYou will be able to place wagers on all of tonight's sets. Wagers will appear as the tournament continues. For all wagers, the minimum bet is 5 SmashBucks and the maximum bet is 100 SmashBucks. Any payouts that are less than 1 will become 1.\nHave fun!")
     await collect_finished_sets(event_id)
-    #await collect_started_sets(event_id)
+    await collect_started_sets(event_id)
 
 
 
